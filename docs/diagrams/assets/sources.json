@@ -1,0 +1,38 @@
+{
+  "kubernetes.svg": {
+    "url": "https://raw.githubusercontent.com/cncf/artwork/main/projects/kubernetes/icon/color/kubernetes-icon-color.svg",
+    "sha256": "ff5427cfeeff39e82834ab1b4fe3ed61fc08596225a17eed56adc04f7cc1f712"
+  },
+  "cilium.svg": {
+    "url": "https://raw.githubusercontent.com/cncf/artwork/main/projects/cilium/icon/color/cilium_icon-color.svg",
+    "sha256": "b36a549db4a7b2a00a916b080cee8cee2f6ab59f76b91d8146ac9870e623cc67"
+  },
+  "argo.svg": {
+    "url": "https://raw.githubusercontent.com/cncf/artwork/main/projects/argo/icon/color/argo-icon-color.svg",
+    "sha256": "e926e477a7912364ea2f582f9cb08b04c3adf92a7b67c39693095960ed50b46a"
+  },
+  "helm.svg": {
+    "url": "https://raw.githubusercontent.com/cncf/artwork/main/projects/helm/icon/color/helm-icon-color.svg",
+    "sha256": "ad04fbc7841a55023ad7806aa133a86ebd0aab21c2179be97f9048617138e7b1"
+  },
+  "hubble.png": {
+    "url": "https://raw.githubusercontent.com/cilium/hubble/main/Documentation/images/hubble_logo.png",
+    "sha256": "f1128347a8e4e39267f913959a29c3c3ff920b9b072a62a8171da5d6bce27ed9"
+  },
+  "ansible.svg": {
+    "url": "https://raw.githubusercontent.com/ansible/logos/main/community-logo/Ansible-Community-Logo-RGB-Black.svg",
+    "sha256": "271b78c69c04205fe9df520625af55a87a439b129a42ed969b4beebb632436f0"
+  },
+  "debian.svg": {
+    "url": "https://www.debian.org/logos/openlogo-nd.svg",
+    "sha256": "89a3ca1a1bc91610edcc637457e7275a159309f4621829b2a0170e28970cac20"
+  },
+  "opentofu.svg": {
+    "url": "https://raw.githubusercontent.com/opentofu/brand-artifacts/main/symbol-only/transparent/SVG/on-light.svg",
+    "sha256": "8bbde074dfc2b0e31461a10a7a08ad6c43b3273f5fc3fc334459ee4c54570ec8"
+  },
+  "proxmox.svg": {
+    "url": "https://www.proxmox.com/images/proxmox/logos/proxmox-logo-pack.zip#proxmox-logo-pack/Proxmox_logos_full_lockup_SVG/proxmox-full-lockup-color.svg",
+    "sha256": "ce4bbac9e9358797c4e459667859080ca2b2de27ed73f429e32b672f128e4928"
+  }
+}
