@@ -1,0 +1,11 @@
+.venv
+.env
+.env.*
+!.env.example
+
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+/infra/servers/*.tfvars
+.ssh/

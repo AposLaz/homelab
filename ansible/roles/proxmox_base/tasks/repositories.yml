@@ -1,0 +1,73 @@
+---
+- name: Inspect Proxmox enterprise repository files
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop:
+    - /etc/apt/sources.list.d/pve-enterprise.list
+    - /etc/apt/sources.list.d/pve-enterprise.sources
+  register: proxmox_enterprise_repository_files
+
+- name: Back up Proxmox enterprise repository files
+  ansible.builtin.copy:
+    src: "{{ item.item }}"
+    dest: "{{ item.item }}.ansible-backup"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0644"
+    force: false
+  loop: "{{ proxmox_enterprise_repository_files.results }}"
+  when:
+    - proxmox_disable_enterprise_repo | bool
+    - item.stat.exists
+
+- name: Disable Proxmox enterprise repository files
+  ansible.builtin.file:
+    path: "{{ item.item }}"
+    state: absent
+  loop: "{{ proxmox_enterprise_repository_files.results }}"
+  when:
+    - proxmox_disable_enterprise_repo | bool
+    - item.stat.exists
+
+- name: Configure Proxmox no-subscription repository
+  ansible.builtin.template:
+    src: pve-no-subscription.sources.j2
+    dest: /etc/apt/sources.list.d/pve-no-subscription.sources
+    owner: root
+    group: root
+    mode: "0644"
+  when: proxmox_enable_no_subscription_repo | bool
+
+- name: Inspect legacy Proxmox no-subscription repository
+  ansible.builtin.stat:
+    path: /etc/apt/sources.list.d/pve-no-subscription.list
+  register: proxmox_legacy_no_subscription_repository
+
+- name: Back up legacy Proxmox no-subscription repository
+  ansible.builtin.copy:
+    src: /etc/apt/sources.list.d/pve-no-subscription.list
+    dest: /etc/apt/sources.list.d/pve-no-subscription.list.ansible-backup
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0644"
+    force: false
+  when: proxmox_legacy_no_subscription_repository.stat.exists
+
+- name: Remove legacy Proxmox no-subscription repository
+  ansible.builtin.file:
+    path: /etc/apt/sources.list.d/pve-no-subscription.list
+    state: absent
+  when: proxmox_legacy_no_subscription_repository.stat.exists
+
+- name: Remove managed Proxmox no-subscription repository when disabled
+  ansible.builtin.file:
+    path: /etc/apt/sources.list.d/pve-no-subscription.sources
+    state: absent
+  when: not (proxmox_enable_no_subscription_repo | bool)
+
+- name: Refresh APT package metadata
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600

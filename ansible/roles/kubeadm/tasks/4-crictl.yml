@@ -1,0 +1,74 @@
+
+---
+########################################################################
+# Install crictl from official GitHub binaries.
+########################################################################
+
+- name: Determine crictl architecture
+  ansible.builtin.set_fact:
+    vm_arch: "{{ {'x86_64': 'amd64', 'aarch64': 'arm64'}[ansible_facts['architecture']] }}"
+
+- name: Check currently installed crictl version
+  ansible.builtin.command: /usr/local/bin/crictl --version
+  register: crictl_version
+  changed_when: false
+  failed_when: false
+
+- name: Determine if crictl installation is required
+  ansible.builtin.set_fact:
+    crictl_install_required: >-
+      {{
+        crictl_version.rc != 0 or
+        ('v' ~ (kubeadm_crictl.version | string))
+        not in crictl_version.stdout.split()
+      }}
+
+- name: Download crictl archive
+  ansible.builtin.get_url:
+    url: "https://github.com/kubernetes-sigs/cri-tools/releases/download/v{{ kubeadm_crictl.version }}/crictl-v{{ kubeadm_crictl.version }}-linux-{{ vm_arch }}.tar.gz"
+    dest: "/tmp/crictl-v{{ kubeadm_crictl.version }}-linux-{{ vm_arch }}.tar.gz"
+    mode: "0644"
+    checksum: "sha256:{{ kubeadm_crictl.checksums[vm_arch] }}"
+  when: crictl_install_required
+
+- name: Extract crictl archive
+  ansible.builtin.unarchive:
+    src: "/tmp/crictl-v{{ kubeadm_crictl.version }}-linux-{{ vm_arch }}.tar.gz"
+    dest: /usr/local/bin
+    remote_src: true
+    mode: "0755"
+  when: crictl_install_required
+
+########################################################################
+# Configure crictl
+########################################################################
+
+- name: Configure crictl endpoint
+  ansible.builtin.copy:
+    dest: /etc/crictl.yaml
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      runtime-endpoint: unix:///run/containerd/containerd.sock
+      image-endpoint: unix:///run/containerd/containerd.sock
+      timeout: 10
+      debug: false
+
+########################################################################
+# Verify installation
+########################################################################
+
+- name: Verify installed crictl version
+  ansible.builtin.command: /usr/local/bin/crictl --version
+  register: crictl_version_after
+  changed_when: false
+
+- name: Display crictl version
+  ansible.builtin.debug:
+    var: crictl_version_after.stdout
+
+- name: Verify crictl connectivity
+  ansible.builtin.command: /usr/local/bin/crictl info
+  register: crictl_info
+  changed_when: false

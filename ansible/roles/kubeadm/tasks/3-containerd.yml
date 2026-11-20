@@ -1,0 +1,135 @@
+
+---
+########################################################################
+# Install containerd from official GitHub binaries.
+########################################################################
+
+- name: Determine containerd architecture
+  ansible.builtin.set_fact:
+    vm_arch: "{{ {'x86_64': 'amd64', 'aarch64': 'arm64'}[ansible_facts['architecture']] }}"
+
+- name: Check currently installed containerd version
+  ansible.builtin.command: /usr/local/bin/containerd --version
+  register: containerd_version
+  changed_when: false
+  failed_when: false
+
+- name: Determine if containerd installation is required
+  ansible.builtin.set_fact:
+    containerd_install_required: >-
+      {{
+        containerd_version.rc != 0 or
+        ('v' ~ (kubeadm_containerd.version | string))
+        not in containerd_version.stdout.split()
+      }}
+
+- name: Download containerd archive
+  ansible.builtin.get_url:
+    url: "https://github.com/containerd/containerd/releases/download/v{{ kubeadm_containerd.version }}/containerd-{{ kubeadm_containerd.version }}-linux-{{ vm_arch }}.tar.gz"
+    dest: "/tmp/containerd-{{ kubeadm_containerd.version }}-linux-{{ vm_arch }}.tar.gz"
+    mode: "0644"
+    checksum: "sha256:{{ kubeadm_containerd.checksums[vm_arch] }}"
+  when: containerd_install_required
+
+- name: Extract containerd archive
+  ansible.builtin.unarchive:
+    src: "/tmp/containerd-{{ kubeadm_containerd.version }}-linux-{{ vm_arch }}.tar.gz"
+    dest: /usr/local
+    remote_src: true
+  when: containerd_install_required
+  notify: Restart containerd
+
+########################################################################
+# Runc installation
+########################################################################
+
+- name: Check currently installed runc version
+  ansible.builtin.command: /usr/local/sbin/runc --version
+  register: runc_version
+  changed_when: false
+  failed_when: false
+
+- name: Determine if runc installation is required
+  ansible.builtin.set_fact:
+    runc_install_required: >-
+      {{
+        runc_version.rc != 0 or
+        (kubeadm_runc.version | string)
+        not in runc_version.stdout.split()
+      }}
+
+- name: Download runc binary
+  ansible.builtin.get_url:
+    url: "https://github.com/opencontainers/runc/releases/download/v{{ kubeadm_runc.version }}/runc.{{ vm_arch }}"
+    dest: /usr/local/sbin/runc
+    mode: "0755"
+    checksum: "sha256:{{ kubeadm_runc.checksums[vm_arch] }}"
+  when: runc_install_required
+
+########################################################################
+# Configure containerd TOML file
+########################################################################
+
+- name: Ensure containerd configuration directory exists
+  ansible.builtin.file:
+    path: /etc/containerd
+    state: directory
+    mode: "0755"
+
+- name: Configure containerd
+  ansible.builtin.template:
+    src: containerd-config.toml.j2
+    dest: /etc/containerd/config.toml
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart containerd
+
+########################################################################
+# Install containerd systemd service
+########################################################################
+
+- name: Ensure systemd service directory exists
+  ansible.builtin.file:
+    path: /usr/local/lib/systemd/system
+    state: directory
+    mode: "0755"
+
+- name: Install containerd systemd service
+  ansible.builtin.get_url:
+    url: "https://raw.githubusercontent.com/containerd/containerd/v{{ kubeadm_containerd.version }}/containerd.service"
+    dest: /usr/local/lib/systemd/system/containerd.service
+    mode: "0644"
+  notify: Restart containerd
+
+- name: Enable and start containerd
+  ansible.builtin.systemd_service:
+    name: containerd
+    daemon_reload: true
+    enabled: true
+    state: started
+
+- name: Apply containerd changes
+  ansible.builtin.meta: flush_handlers
+
+########################################################################
+# Verify installation
+########################################################################
+
+- name: Verify installed containerd version
+  ansible.builtin.command: /usr/local/bin/containerd --version
+  register: containerd_version_after
+  changed_when: false
+
+- name: Display containerd version
+  ansible.builtin.debug:
+    var: containerd_version_after.stdout
+
+- name: Verify installed runc version
+  ansible.builtin.command: /usr/local/sbin/runc --version
+  register: runc_version_after
+  changed_when: false
+
+- name: Display runc version
+  ansible.builtin.debug:
+    var: runc_version_after.stdout_lines

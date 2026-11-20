@@ -1,0 +1,35 @@
+---
+  # It tells the Linux kernel to forward IPv4 packets between network interfaces, making the machine able to act like a router/gateway.
+- name: Enable IPv4 forwarding immediately
+  ansible.builtin.command: sysctl -w net.ipv4.ip_forward=1
+  changed_when: false
+
+- name: Persist IPv4 forwarding
+  ansible.builtin.copy:
+    dest: /etc/sysctl.d/99-proxmox-nat.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      net.ipv4.ip_forward=1
+
+- name: Install nftables
+  ansible.builtin.apt:
+    name: nftables
+    state: present
+    update_cache: true
+
+- name: Configure nftables NAT for VM network
+  ansible.builtin.template:
+    src: nftables-nat.conf.j2
+    dest: /etc/nftables.conf
+    owner: root
+    group: root
+    mode: "0755"
+  notify: Reload nftables
+
+- name: Enable nftables service
+  ansible.builtin.systemd:
+    name: nftables
+    enabled: true
+    state: started

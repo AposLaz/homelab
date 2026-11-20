@@ -1,0 +1,62 @@
+---
+# ifupdown2 provides ifreload, which can apply /etc/network/interfaces changes
+# without needing a full reboot or a risky networking service restart.
+- name: Install ifupdown2 for safer network reloads
+  ansible.builtin.apt:
+    name: ifupdown2
+    state: present
+    update_cache: true
+
+# Backup the existing network interfaces file before making any changes. This allows for easy rollback if needed.
+# "force=false" ensures we don't overwrite the first known-good existing backup.
+- name: Backup current network interfaces file before making changes
+  ansible.builtin.copy:
+    src: /etc/network/interfaces
+    dest: /etc/network/interfaces.ansible-backup
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0644"
+    force: false
+
+- name: Configure Proxmox network interfaces
+  ansible.builtin.template:
+    src: interfaces.j2
+    dest: /etc/network/interfaces
+    owner: root
+    group: root
+    mode: "0644"
+    backup: true
+  notify: Reload networking
+
+# Validate /etc/network/interfaces using ifupdown2.
+# Similar idea to "terraform validate", but for Debian/Proxmox network config.
+#
+# What it does:
+# - Reads /etc/network/interfaces
+# - Checks the configured interfaces
+# - Compares expected config with current live network state
+# - Does NOT edit files
+# - Does NOT reload networking
+# - Does NOT restart Wi-Fi
+#
+# If the command fails, Ansible fails the task and stops the play.
+# This protects you from reloading a bad network config.
+- name: Validate network interfaces config
+  ansible.builtin.command: ifquery --check --all
+  # Register means: Save command output in a variable so we can print it or debug it later.
+  register: ifquery_check
+  # This is a read-only validation command.
+  # It should never count as a "changed" Ansible task.
+  changed_when: false
+
+# Print the validation output.
+# Useful while learning and debugging.
+- name: Show generated network interfaces
+  ansible.builtin.command: cat /etc/network/interfaces
+  register: generated_interfaces
+  changed_when: false
+
+- name: Print generated network interfaces
+  ansible.builtin.debug:
+    var: generated_interfaces.stdout_lines

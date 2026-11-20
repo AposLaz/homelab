@@ -1,0 +1,60 @@
+---
+
+# Description of the host
+hardware_vendor: "GMKtec"
+hardware_model: "NucBox M6 Ultra"
+physical_location: "home"
+
+# Unique reboot time for this node.
+# For future servers:
+# pve02 -> 04:00
+# pve03 -> 05:00
+proxmox_unattended_reboot_time: "03:00"
+
+
+#############################################################################
+# NETWORK
+#############################################################################
+
+proxmox_network_mode: "wifi_nat"
+
+# Proxmox host uses this interface for internet.
+# This interface gets IP/gateway from Wi-Fi DHCP.
+proxmox_wifi_interface: "wlp2s0"
+
+# Private VM network behind Proxmox NAT.
+# VMs will use this network, not the home Wi-Fi network.
+proxmox_vm_network:
+  # cidr private network addresses for VMs
+  cidr: "192.168.100.0/24"
+  # this is the IP address that VMs should use as their default gateway (vmbr0 ip acts as gateway)
+  gateway_for_vms: "192.168.100.2"
+
+# Network config for this specific Proxmox node.
+# This will configure: /etc/network/interfaces
+proxmox_wifi_network_interfaces:
+  - name: vmbr0
+    type: bridge
+    # IP address of Proxmox's vmbr0 interface.
+    # Do not give this IP to a VM.
+    address: "{{ proxmox_vm_network.gateway_for_vms }}/{{ proxmox_vm_network.cidr.split('/')[1] }}"
+
+    # Empty list means: bridge-ports none
+    # This is correct for Wi-Fi + NAT mode.
+    bridge_ports: []
+
+    # STP = Spanning Tree Protocol.
+    # It protects against network loops.
+    # My simple private VM bridge does not need it.
+    bridge_stp: false
+
+    # fd = forward delay.
+    # 0 means start forwarding immediately.
+    bridge_fd: 0
+
+    comments:
+      - "Private VM bridge using NAT through Wi-Fi"
+
+  - name: "{{ proxmox_wifi_interface }}"
+    type: wifi_dhcp
+    wpa_conf: "/etc/wpa_supplicant/wpa_supplicant.conf"

@@ -1,0 +1,14 @@
+---
+argo:
+  chart_version: "10.18.2"
+  release_name: argocd
+  namespace: argocd
+  kubeconfig: "{{ lookup('ansible.builtin.env', 'HOME') }}/.kube/homelab"
+  timeout: 10m0s
+  domain: argocd.home.arpa
+  server_replicas: 1
+  ingress_enabled: false
+  repo_server_replicas: 1
+  controller_replicas: 1
+  redis_ha_enabled: false
+  redis_enabled: true

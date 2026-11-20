@@ -1,0 +1,94 @@
+---
+- name: Verify kubeconfig exists
+  ansible.builtin.stat:
+    path: "{{ kubeconfig_path }}"
+  register: kubeconfig_exists
+
+- name: Require the administrator kubeconfig
+  ansible.builtin.assert:
+    that:
+      - kubeconfig_exists.stat.exists
+    fail_msg: "Kubeconfig is missing at {{ kubeconfig_path }}"
+
+- name: Wait for Kubernetes API readiness
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - "--kubeconfig={{ kubeconfig_path }}"
+      - --request-timeout=5s
+      - get
+      - --raw=/readyz
+  register: api_ready
+  changed_when: false
+  until: api_ready.rc == 0
+  retries: 5
+  delay: 30
+
+- name: Verify Helm is available on the laptop
+  ansible.builtin.command:
+    argv:
+      - helm
+      - version
+      - --short
+  delegate_to: localhost
+  become: false
+  changed_when: false
+  check_mode: false
+
+- name: Check the laptop kubeconfig
+  ansible.builtin.stat:
+    path: "{{ cilium.kubeconfig }}"
+  delegate_to: localhost
+  become: false
+  register: cilium_local_kubeconfig
+
+- name: Require the laptop kubeconfig
+  ansible.builtin.assert:
+    that:
+      - cilium_local_kubeconfig.stat.exists
+      - cilium_local_kubeconfig.stat.isreg | default(false)
+    fail_msg: "Create the laptop kubeconfig at {{ cilium.kubeconfig }} before running Cilium tasks."
+
+# Render before delegation to preserve the control-plane API address.
+- name: Render Cilium Helm values
+  ansible.builtin.set_fact:
+    cilium_helm_values: "{{ lookup('ansible.builtin.template', 'values.yaml.j2') | from_yaml }}"
+
+- name: Verify Cilium Helm values are a dictionary
+  ansible.builtin.assert:
+    that:
+      - cilium_helm_values is mapping
+    fail_msg: Cilium Helm values must render to a YAML mapping.
+
+- name: Add Cilium Helm repository on the laptop
+  kubernetes.core.helm_repository:
+    name: cilium
+    repo_url: https://helm.cilium.io/
+    force_update: true
+  delegate_to: localhost
+  become: false
+
+- name: Install or upgrade Cilium from the laptop
+  kubernetes.core.helm:
+    name: "{{ cilium.release_name }}"
+    chart_ref: cilium/cilium
+    chart_version: "{{ cilium.chart_version }}"
+    release_namespace: "{{ cilium.namespace }}"
+    kubeconfig: "{{ cilium.kubeconfig }}"
+    release_values: "{{ cilium_helm_values }}"
+    state: present
+    wait: true
+    timeout: 10m0s
+  delegate_to: localhost
+  become: false
+  no_log: true
+
+- name: Wait for Cilium DaemonSet rollout
+  ansible.builtin.command:
+    cmd: >-
+      kubectl
+      --kubeconfig {{ kubeconfig_path }}
+      -n {{ cilium.namespace }}
+      rollout status daemonset/cilium
+      --timeout=300s
+  changed_when: false

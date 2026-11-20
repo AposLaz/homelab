@@ -1,0 +1,20 @@
+---
+global:
+  domain: {{ argo.domain | to_json }}
+
+server:
+  replicas: {{ argo.server_replicas | int }}
+  ingress:
+    enabled: {{ argo.ingress_enabled | bool | lower }}
+
+repoServer:
+  replicas: {{ argo.repo_server_replicas | int }}
+
+controller:
+  replicas: {{ argo.controller_replicas | int }}
+
+redis-ha:
+  enabled: {{ argo.redis_ha_enabled | bool | lower }}
+
+redis:
+  enabled: {{ argo.redis_enabled | bool | lower }}

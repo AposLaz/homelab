@@ -1,0 +1,19 @@
+---
+- name: Render values with Hubble enabled
+  ansible.builtin.set_fact:
+    cilium_helm_values: "{{ lookup('ansible.builtin.template', 'values.yaml.j2') | from_yaml }}"
+
+- name: Install or upgrade Cilium from the laptop
+  kubernetes.core.helm:
+    name: "{{ cilium.release_name }}"
+    chart_ref: cilium/cilium
+    chart_version: "{{ cilium.chart_version }}"
+    release_namespace: "{{ cilium.namespace }}"
+    kubeconfig: "{{ cilium.kubeconfig }}"
+    release_values: "{{ cilium_helm_values }}"
+    state: present
+    wait: true
+    timeout: 10m0s
+  delegate_to: localhost
+  become: false
+  no_log: true

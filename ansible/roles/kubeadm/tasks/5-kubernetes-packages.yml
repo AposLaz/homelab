@@ -1,0 +1,132 @@
+---
+- name: Create signing key folder
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Download the public signing key
+  ansible.builtin.get_url:
+    url: "https://pkgs.k8s.io/core:/stable:/v{{ kubeadm_kubernetes.version }}/deb/Release.key"
+    dest: /tmp/kubernetes-Release.key
+    mode: "0644"
+
+- name: Convert Kubernetes signing key
+  ansible.builtin.command:
+    argv:
+      - gpg
+      - --batch
+      - --dearmor
+      - -o
+      - "{{ kubeadm_kubernetes.keyring_path }}"
+      - /tmp/kubernetes-Release.key
+    creates: "{{ kubeadm_kubernetes.keyring_path }}"
+
+- name: Add Kubernetes APT repository
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by={{ kubeadm_kubernetes.keyring_path }}] https://pkgs.k8s.io/core:/stable:/v{{ kubeadm_kubernetes.version }}/deb/ /"
+    filename: kubernetes
+    state: present
+    update_cache: true
+
+########################################################################
+# Install Kubernetes packages
+########################################################################
+
+- name: Install Kubernetes packages
+  ansible.builtin.apt:
+    name:
+      - "kubelet={{ kubeadm_kubernetes.version }}.{{ kubeadm_kubernetes.patchVersion }}-*"
+      - "kubeadm={{ kubeadm_kubernetes.version }}.{{ kubeadm_kubernetes.patchVersion }}-*"
+      - "kubectl={{ kubeadm_kubernetes.version }}.{{ kubeadm_kubernetes.patchVersion }}-*"
+      # APT owns the CNI binaries in /opt/cni/bin.
+      - kubernetes-cni
+    state: present
+    update_cache: true
+    # Upgrades must explicitly unhold packages in a separate kubeadm workflow.
+    allow_change_held_packages: false
+
+- name: Hold Kubernetes packages
+  ansible.builtin.dpkg_selections:
+    name: "{{ item }}"
+    selection: hold
+  loop:
+    - kubelet
+    - kubeadm
+    - kubectl
+
+# Earlier runs may have overwritten package-owned files with the CNI archive.
+- name: Check package-managed CNI files
+  ansible.builtin.command:
+    argv:
+      - dpkg
+      - --verify
+      - --verify-format=rpm
+      - kubernetes-cni
+  register: kubeadm_cni_package_verification
+  changed_when: false
+  failed_when: kubeadm_cni_package_verification.rc not in [0, 1]
+  when: not ansible_check_mode
+
+- name: Restore CNI files previously overwritten by manual installation
+  when:
+    - not ansible_check_mode
+    - kubeadm_cni_package_verification.stdout | default('') | trim | length > 0
+  block:
+    - name: Read the installed CNI package version
+      ansible.builtin.command:
+        argv:
+          - dpkg-query
+          - --show
+          - --showformat=${Version}
+          - kubernetes-cni
+      register: kubeadm_cni_package_version
+      changed_when: false
+
+    - name: Reinstall the installed CNI package to restore its files
+      ansible.builtin.command:
+        argv:
+          - apt-get
+          - --yes
+          - --reinstall
+          - -o
+          - DPkg::Lock::Timeout=60
+          - install
+          - "kubernetes-cni={{ kubeadm_cni_package_version.stdout | trim }}"
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+      changed_when: true
+
+- name: Enable and start kubelet
+  ansible.builtin.systemd_service:
+    name: kubelet
+    enabled: true
+    state: started
+
+########################################################################
+# Verify installation
+########################################################################
+
+- name: Verify kubelet version
+  ansible.builtin.command: kubelet --version
+  register: kubelet_version
+  changed_when: false
+
+- name: Verify kubeadm version
+  ansible.builtin.command: kubeadm version -o short
+  register: kubeadm_version
+  changed_when: false
+
+- name: Verify kubectl version
+  ansible.builtin.command: kubectl version --client
+  register: kubectl_version
+  changed_when: false
+
+- name: Display Kubernetes versions
+  ansible.builtin.debug:
+    msg:
+      - "{{ kubelet_version.stdout }}"
+      - "{{ kubeadm_version.stdout }}"
+      - "{{ kubectl_version.stdout }}"

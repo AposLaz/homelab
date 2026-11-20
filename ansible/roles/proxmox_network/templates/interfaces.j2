@@ -1,0 +1,43 @@
+# This file is managed by Ansible.
+# Manual changes may be overwritten.
+
+# Automatically bring up the loopback interface
+auto lo
+# configure lo as a loopback interface
+iface lo inet loopback
+
+{% for iface in proxmox_wifi_network_interfaces %}
+{% if iface.name != 'lo' %}
+
+{% if iface.type == 'wifi_dhcp' %}
+auto {{ iface.name }}
+iface {{ iface.name }} inet dhcp
+{% if iface.wpa_conf is defined %}
+    wpa-conf {{ iface.wpa_conf }}
+{% endif %}
+
+{% elif iface.type == 'bridge' %}
+auto {{ iface.name }}
+iface {{ iface.name }} inet static
+        address {{ iface.address }}
+{% if iface.gateway is defined and iface.gateway %}
+        gateway {{ iface.gateway }}
+{% endif %}
+{% if iface.bridge_ports is defined and iface.bridge_ports | length > 0 %}
+        bridge-ports {{ iface.bridge_ports | join(' ') }}
+{% else %}
+        bridge-ports none
+{% endif %}
+        bridge-stp {{ 'on' if iface.bridge_stp | default(false) else 'off' }}
+        bridge-fd {{ iface.bridge_fd | default(0) }}
+{% if iface.comments is defined %}
+{% for comment in iface.comments %}
+        # {{ comment }}
+{% endfor %}
+{% endif %}
+
+{% endif %}
+{% endif %}
+{% endfor %}
+
+source /etc/network/interfaces.d/*

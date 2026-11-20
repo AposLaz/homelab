@@ -1,0 +1,72 @@
+# Public example; all IP addresses and names below are illustrative.
+# Copy to servers/pve01.tfvars and adjust for your Proxmox host/network.
+# Run OpenTofu/Terraform from infra/ with -var-file=servers/pve01.tfvars.
+# Keep real tokens and private SSH keys out of Git.
+# Ensure the cloud image URL exists and datastore names match your host.
+
+proxmox_endpoint = "https://192.168.1.10:8006/"
+# Supply the token outside this file using TF_VAR_proxmox_api_token.
+# Expected format: terraform@pve!homelab=YOUR_TOKEN_SECRET
+proxmox_node_name = "pve01"
+
+tags = ["debian13", "kubeadm"]
+
+k8s_cloud_image = {
+  url          = "https://cloud.debian.org/images/cloud/trixie/20261103-2651/debian-13-generic-amd64-20261103-2651.qcow2"
+  content_type = "import"
+  datastore_id = "local"
+}
+
+bridge     = "vmbr0"
+gateway_ip = "192.168.100.2"
+
+#####################################################################
+# VM Template
+#####################################################################
+template_vm_id   = 9000
+vm_template_name = "debian13-cloudinit-v1"
+
+#####################################################################
+# Kubernetes cluster
+#####################################################################
+
+ssh_username        = "debian"
+ssh_public_key_path = ".ssh/vms.pub"
+
+k8s_nodes = {
+  control_plane = [{
+    cpu = {
+      cores = 2
+    }
+    memory          = 4096
+    storage_size    = 30
+    private_ip_cidr = "192.168.100.10/24"
+  }]
+
+  workers = [
+    {
+      cpu = {
+        cores = 4
+      }
+      memory          = 6144
+      storage_size    = 50
+      private_ip_cidr = "192.168.100.11/24"
+    },
+    {
+      cpu = {
+        cores = 4
+      }
+      memory          = 6144
+      storage_size    = 50
+      private_ip_cidr = "192.168.100.12/24"
+    },
+    {
+      cpu = {
+        cores = 2
+      }
+      memory          = 4096
+      storage_size    = 50
+      private_ip_cidr = "192.168.100.13/24"
+    }
+  ]
+}

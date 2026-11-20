@@ -1,0 +1,42 @@
+---
+- name: Deploy Argo CD from the laptop
+  delegate_to: localhost
+  become: false
+  block:
+    - name: Verify Helm is installed locally
+      ansible.builtin.command:
+        argv: [helm, version, --short]
+      changed_when: false
+      check_mode: false
+
+    - name: Check local kubeconfig
+      ansible.builtin.stat:
+        path: "{{ argo.kubeconfig }}"
+      register: argo_kubeconfig
+
+    - name: Require local kubeconfig
+      ansible.builtin.assert:
+        that:
+          - argo_kubeconfig.stat.exists
+          - argo_kubeconfig.stat.isreg | default(false)
+        fail_msg: "Kubeconfig is missing at {{ argo.kubeconfig }} on the laptop."
+
+    - name: Add Argo Helm repository
+      kubernetes.core.helm_repository:
+        name: argo
+        repo_url: https://argoproj.github.io/argo-helm
+        state: present
+
+    - name: Install or upgrade Argo CD
+      kubernetes.core.helm:
+        name: "{{ argo.release_name }}"
+        chart_ref: argo/argo-cd
+        chart_version: "{{ argo.chart_version }}"
+        release_namespace: "{{ argo.namespace }}"
+        create_namespace: true
+        kubeconfig: "{{ argo.kubeconfig }}"
+        release_values: "{{ lookup('ansible.builtin.template', 'values.yaml.j2') | from_yaml }}"
+        update_repo_cache: true
+        state: present
+        wait: true
+        timeout: "{{ argo.timeout }}"

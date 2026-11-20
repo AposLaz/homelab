@@ -1,0 +1,25 @@
+---
+- name: Check Proxmox manager JavaScript file
+  ansible.builtin.stat:
+    path: /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js
+  register: proxmoxlib_js
+
+- name: Backup Proxmox manager JavaScript file before patching
+  ansible.builtin.copy:
+    src: /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js
+    dest: /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js.ansible-backup
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0644"
+    force: false
+  when: proxmoxlib_js.stat.exists
+
+- name: Disable Proxmox subscription nag screen
+  ansible.builtin.replace:
+    path: /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js
+    regexp: 'Ext\.Msg\.show\(\{[\s\S]*?No valid subscription[\s\S]*?\}\);'
+    replace: 'void({});'
+    backup: true
+  when: proxmoxlib_js.stat.exists
+  notify: Restart pveproxy

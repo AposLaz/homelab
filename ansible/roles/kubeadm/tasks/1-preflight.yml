@@ -1,0 +1,116 @@
+---
+# Validate kubernetes resources requirements
+# https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/#before-you-begin
+
+########################################################################
+# Verify supported operating system
+########################################################################
+# This role is tested on Debian 13. Add other versions only after testing them.
+- name: Check operating system
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['distribution'] == 'Debian'
+      - ansible_facts['distribution_major_version'] == '13'
+    fail_msg: "This role is tested only on Debian 13."
+
+########################################################################
+# Verify minimum CPU and memory requirements
+########################################################################
+- name: Check minimum node resources
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['processor_vcpus'] | int >= 2
+      - ansible_facts['memtotal_mb'] | int >= 1800
+    fail_msg: "Each node requires at least 2 vCPUs and approximately 2 GiB of RAM."
+
+########################################################################
+# Verify unique hostnames, product UUIDs and MAC addresses
+########################################################################
+- name: Verify unique node identities
+  ansible.builtin.assert:
+    that:
+      - (node_hostnames | unique | length) == (cluster_nodes | length)
+      - (node_uuids | unique | length) == (cluster_nodes | length)
+      - (node_macs | unique | length) == (cluster_nodes | length)
+    fail_msg: "Duplicate hostname, product UUID or primary-interface MAC found."
+  vars:
+    cluster_nodes: "{{ groups['kubeadm_cluster'] }}"
+
+    node_hostnames: >-
+      {{
+        cluster_nodes
+        | map('extract', hostvars, ['ansible_facts', 'hostname'])
+        | list
+      }}
+
+    node_uuids: >-
+      {{
+        cluster_nodes
+        | map('extract', hostvars, ['ansible_facts', 'product_uuid'])
+        | list
+      }}
+
+    node_macs: >-
+      {{
+        cluster_nodes
+        | map('extract', hostvars,
+              ['ansible_facts', 'default_ipv4', 'macaddress'])
+        | list
+      }}
+  run_once: true
+
+########################################################################
+# Verify connectivity between cluster nodes
+########################################################################
+- name: Check connectivity to other cluster nodes
+  ansible.builtin.command:
+    argv:
+      - ping
+      - -c
+      - "2"
+      - -W
+      - "5"
+      - "{{ hostvars[item]['ansible_host'] }}"
+  loop: "{{ groups['kubeadm_cluster'] }}"
+  when: item != inventory_hostname
+  changed_when: false
+
+########################################################################
+# Verify available root filesystem space
+########################################################################
+- name: Check available root filesystem space
+  ansible.builtin.assert:
+    that:
+      - root_mount['size_available'] | int >= 20 * 1024 ** 3
+    fail_msg: "At least 20 GiB of free space is required on /."
+  vars:
+    root_mount: >-
+      {{ ansible_facts['mounts'] | selectattr('mount', 'equalto', '/') | first }}
+
+########################################################################
+# Verify DNS resolution for repositories and container registry
+########################################################################
+- name: Check package repository DNS resolution
+  ansible.builtin.command:
+    argv:
+      - getent 
+      - ahostsv4
+      - "{{ item }}"
+  loop: 
+    - deb.debian.org
+    - pkgs.k8s.io
+    - registry.k8s.io
+  changed_when: false
+
+########################################################################
+# Verify outbound HTTPS access to package repositories
+########################################################################
+- name: Check outbound HTTPS access
+  ansible.builtin.uri:
+    url: "{{ item }}"
+    method: GET
+    timeout: 20
+    return_content: false
+  loop:
+    - https://deb.debian.org/debian/README
+    - https://pkgs.k8s.io/

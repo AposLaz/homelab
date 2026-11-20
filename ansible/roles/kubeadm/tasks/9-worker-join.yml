@@ -1,0 +1,27 @@
+---
+- name: Join worker to the cluster
+  ansible.builtin.command:
+    argv:
+      - kubeadm
+      - join
+      - "{{ control_plane_host }}:6443"
+      - --token
+      - "{{ kubeadm_join_token }}"
+      - --discovery-token-ca-cert-hash
+      - "sha256:{{ worker_ca_hash | trim }}"
+    creates: /etc/kubernetes/kubelet.conf
+  become: true
+  no_log: true
+
+- name: Label the joined worker
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - "--kubeconfig={{ kubeconfig_path }}"
+      - label
+      - node
+      - "{{ inventory_hostname }}"
+      - node-role.kubernetes.io/worker=
+      - --overwrite
+  delegate_to: "{{ groups['kubeadm_control_plane'][0] }}"
+  become: true

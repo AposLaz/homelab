@@ -1,0 +1,8 @@
+---
+- name: Bootstrap Argo CD through local Helm
+  hosts: kubeadm_control_plane[0]
+  gather_facts: false
+  become: false
+  roles:
+    - role: argocd
+      tags: [argocd]

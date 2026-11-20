@@ -1,0 +1,47 @@
+---
+- name: List existing bootstrap tokens
+  ansible.builtin.command:
+    argv:
+      - kubeadm
+      - token
+      - list
+      - -o
+      - 'jsonpath={.token}{"\n"}'
+  register: kubeadm_tokens
+  changed_when: false
+  no_log: true
+
+- name: Create a bootstrap token when none exists
+  ansible.builtin.command:
+    argv:
+      - kubeadm
+      - token
+      - create
+      - --ttl
+      - 2h
+  register: kubeadm_new_token
+  when: kubeadm_tokens.stdout | trim | length == 0
+  no_log: true
+
+- name: Select the bootstrap token
+  ansible.builtin.set_fact:
+    kubeadm_join_token: >-
+      {{
+        (kubeadm_tokens.stdout_lines | first)
+        if kubeadm_tokens.stdout | trim | length > 0
+        else kubeadm_new_token.stdout | trim
+      }}
+  no_log: true
+
+- name: Get Kubernetes CA public key hash
+  ansible.builtin.shell: |
+    set -o pipefail
+    openssl x509 -in /etc/kubernetes/pki/ca.crt -pubkey -noout |
+      openssl pkey -pubin -outform DER |
+      openssl dgst -sha256 -hex |
+      awk '{print $NF}'
+  args:
+    executable: /bin/bash
+  register: kubeadm_ca_hash
+  changed_when: false
+  become: true

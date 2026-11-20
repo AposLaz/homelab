@@ -1,0 +1,25 @@
+---
+- name: Read local datastore configuration
+  ansible.builtin.command:
+    argv:
+      - pvesh
+      - get
+      - /storage/local
+      - --output-format
+      - json
+  register: local_storage
+  changed_when: false
+  check_mode: false
+
+- name: Enable snippets while preserving existing content types
+  ansible.builtin.command:
+    argv:
+      - pvesm
+      - set
+      - local
+      - --content
+      - "{{ (existing_content + ['snippets']) | unique | join(',') }}"
+  vars:
+    existing_content: "{{ (local_storage.stdout | from_json).content.split(',') }}"
+  when: "'snippets' not in existing_content"
+  changed_when: true

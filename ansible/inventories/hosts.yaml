@@ -1,0 +1,44 @@
+all:
+  children:
+    local_laptop:
+      hosts:
+        localhost:
+          ansible_connection: local
+          ansible_python_interpreter: "{{ ansible_playbook_python }}"
+      vars:
+        laptop_connection: "Apostolis Starlink"
+    proxmox:
+      hosts:
+        pve01:
+          ansible_host: 192.168.1.38
+      vars:
+        ansible_user: root
+        ansible_python_interpreter: /usr/bin/python3.13
+        kubernetes_cluster_subnet: 192.168.100.0/24
+    kubernetes:
+      vars:
+        ansible_user: debian
+        ansible_ssh_private_key_file: "{{ inventory_dir }}/../../infra/.ssh/vms"
+        ansible_python_interpreter: /usr/bin/python3.13
+        ansible_ssh_common_args: "-o ProxyJump=root@192.168.1.38"
+      children:
+        kubeadm_cluster:
+          children:
+            kubeadm_control_plane:
+              hosts:
+                control-plane-01:
+                  ansible_host: 192.168.100.10
+            kubeadm_workers:
+              hosts:
+                worker-01:
+                  ansible_host: 192.168.100.11
+                worker-02:
+                  ansible_host: 192.168.100.12
+                worker-03:
+                  ansible_host: 192.168.100.13
+    vms_on_pve01:
+      hosts:
+        control-plane-01:
+        worker-01:
+        worker-02:
+        worker-03:

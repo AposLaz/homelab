@@ -1,0 +1,10 @@
+---
+- name: Reload networking
+  ansible.builtin.command: ifreload -a
+  changed_when: true
+  when: proxmox_network_apply | bool
+
+- name: Reload nftables
+  ansible.builtin.systemd:
+    name: nftables
+    state: reloaded

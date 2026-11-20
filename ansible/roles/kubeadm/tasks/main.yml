@@ -1,0 +1,55 @@
+---
+- name: Run preflight checks
+  ansible.builtin.import_tasks: 1-preflight.yml
+  tags: [bootstrap]
+
+- name: Install prerequisites
+  ansible.builtin.import_tasks: 2-prerequisites.yml
+  tags: [bootstrap]
+
+- name: Install & Configure containerd
+  ansible.builtin.import_tasks: 3-containerd.yml
+  tags: [bootstrap]
+
+- name: Install crictl for Kubernetes Troubleshooting
+  ansible.builtin.import_tasks: 4-crictl.yml
+  tags: [bootstrap]
+
+- name: Install binaries for Kubernetes Cluster
+  ansible.builtin.import_tasks: 5-kubernetes-packages.yml
+  tags: [bootstrap]
+
+- name: Initialize control plane
+  ansible.builtin.import_tasks: 6-control-plane.yml
+  tags: [bootstrap]
+  when: inventory_hostname in groups['kubeadm_control_plane']
+
+- name: Install cluster networking - cilium
+  ansible.builtin.import_tasks: 7-cilium.yml
+  when: inventory_hostname in groups['kubeadm_control_plane']
+  vars:
+    hubble_relay_enabled: false
+    hubble_ui_enabled: false
+  tags: [cilium]
+
+- name: Prepare worker bootstrap token
+  ansible.builtin.import_tasks: 8-worker-token.yml
+  when: inventory_hostname in groups['kubeadm_control_plane']  
+  tags: [nodes]
+
+- name: Join worker nodes
+  ansible.builtin.import_tasks: 9-worker-join.yml
+  when: inventory_hostname in groups['kubeadm_workers']
+  tags: [nodes]
+  vars:
+    control_plane_host: "{{ hostvars[groups['kubeadm_control_plane'][0]].ansible_host }}"
+    kubeadm_join_token: "{{ hostvars[groups['kubeadm_control_plane'][0]].kubeadm_join_token }}"    
+    worker_ca_hash: "{{ hostvars[groups['kubeadm_control_plane'][0]].kubeadm_ca_hash.stdout | trim }}"
+
+- name: Enable hubble cilium reay & ui
+  ansible.builtin.import_tasks: 10-enable-cilium-ui.yml
+  when: inventory_hostname == groups['kubeadm_control_plane'][0]
+  tags: [hubble]
+  vars:
+    hubble_relay_enabled: true
+    hubble_ui_enabled: true

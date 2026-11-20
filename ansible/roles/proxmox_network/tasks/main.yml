@@ -1,0 +1,11 @@
+---
+- name: Task role is running
+  ansible.builtin.debug:
+    msg: "proxmox network role is running"
+
+- name: Run Proxmox network setup
+  ansible.builtin.import_tasks: network.yml
+
+- name: Configure NAT for Wi-Fi VM network
+  ansible.builtin.import_tasks: nat.yml
+  when: proxmox_network_mode == "wifi_nat"

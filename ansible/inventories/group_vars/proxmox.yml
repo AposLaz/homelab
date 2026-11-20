@@ -1,0 +1,15 @@
+---
+proxmox_unattended_package_blacklist:
+  - "pve-kernel*"
+  - "proxmox-kernel*"
+  - "pve-manager"
+  - "proxmox-ve"
+  - "qemu-server"
+  - "pve-qemu-kvm"
+
+# Kubernetes VM IDs on Proxmox
+proxmox_kubernetes_vm_ids:
+  - 100
+  - 101
+  - 102
+  - 103

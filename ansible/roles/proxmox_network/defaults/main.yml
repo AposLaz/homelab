@@ -1,0 +1,3 @@
+---
+proxmox_network_apply: false
+proxmox_wifi_network_interfaces: []

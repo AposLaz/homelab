@@ -1,0 +1,41 @@
+---
+- name: Configure laptop route to homelab for kubectl
+  hosts: local_laptop
+  become: true
+  gather_facts: false
+
+  vars:
+    homelab_gateway: "{{ hostvars['pve01']['ansible_host'] }}"
+    control_plane_subnet: "{{ hostvars['pve01']['kubernetes_cluster_subnet'] }}"
+
+  tasks:
+    - name: Read saved routes
+      ansible.builtin.command:
+        argv:
+          - nmcli
+          - -g
+          - ipv4.routes
+          - connection
+          - show
+          - "{{ laptop_connection }}"
+      register: saved_routes
+      changed_when: false
+
+    - name: Persist homelab route
+      ansible.builtin.command:
+        argv:
+          - nmcli
+          - connection
+          - modify
+          - "{{ laptop_connection }}"
+          - +ipv4.routes
+          - "{{ control_plane_subnet }} {{ homelab_gateway }}"
+      when: control_plane_subnet not in saved_routes.stdout
+
+    - name: Reactivate the profile to load the saved configuration
+      ansible.builtin.command:
+        argv:
+          - nmcli
+          - connection
+          - up
+          - "{{ laptop_connection }}"

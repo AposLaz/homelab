@@ -1,0 +1,19 @@
+---
+proxmox_manage_repositories: true
+proxmox_disable_enterprise_repo: true
+proxmox_enable_no_subscription_repo: true
+proxmox_debian_codename: "{{ ansible_facts['distribution_release'] }}"
+
+proxmox_disable_nag_screen: true
+
+proxmox_unattended_upgrades_enabled: true
+proxmox_unattended_origins_patterns:
+  - 'origin=Debian,codename=${distro_codename},label=Debian-Security'
+  - 'origin=Debian,codename=${distro_codename}-security,label=Debian-Security'
+
+proxmox_unattended_package_blacklist: []
+proxmox_unattended_auto_reboot: true
+proxmox_unattended_auto_reboot_with_users: false
+proxmox_unattended_reboot_time: "03:00"
+proxmox_unattended_update_days: "Sat"
+proxmox_unattended_update_time: "03:00"

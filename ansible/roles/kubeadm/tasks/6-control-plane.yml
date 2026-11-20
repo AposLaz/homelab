@@ -1,0 +1,38 @@
+---  
+- name: Create the control plane directory
+  ansible.builtin.file:
+    path: /etc/kubernetes
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Deploy kubeadm configuration
+  ansible.builtin.template:
+    src: kubeadm-init.yaml.j2
+    dest: /etc/kubernetes/kubeadm-config.yaml
+    owner: root
+    group: root
+    mode: "0644"
+    validate: "kubeadm config validate --config %s"
+  
+- name: Initialize control plane
+  ansible.builtin.command:
+    cmd: >-
+      kubeadm init --config /etc/kubernetes/kubeadm-config.yaml
+    creates: "{{ kubeconfig_path }}"
+
+- name: Wait for Kubernetes API readiness
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - --kubeconfig={{ kubeconfig_path }}
+      - --request-timeout=10s
+      - get
+      - --raw=/readyz
+  register: kubeadm_api_ready
+  changed_when: false
+  until: kubeadm_api_ready.rc == 0
+  retries: 12
+  delay: 5
+  when: not ansible_check_mode

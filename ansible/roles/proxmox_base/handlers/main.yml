@@ -1,0 +1,13 @@
+---
+# pveproxy is the Proxmox Virtual Environment (PVE) API proxy daemon. 
+# It listens on TCP port 8006, serving the HTTPS-based web GUI and 
+# managing REST API requests, while automatically forwarding 
+# cluster node requests and delegating root-level tasks to pvedaemon.
+- name: Restart pveproxy
+  ansible.builtin.systemd:
+    name: pveproxy
+    state: restarted
+
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true

@@ -1,0 +1,19 @@
+---
+- name: Show that the Proxmox base role is running
+  ansible.builtin.debug:
+    msg: "proxmox_base role is running"
+
+- name: Configure Proxmox package repositories
+  ansible.builtin.import_tasks: repositories.yml
+  when: proxmox_manage_repositories | bool
+
+- name: Configure unattended upgrades
+  ansible.builtin.import_tasks: unattended_upgrades.yml
+  when: proxmox_unattended_upgrades_enabled | bool
+
+- name: Disable Proxmox subscription warning
+  ansible.builtin.import_tasks: nag_screen.yml
+  when: proxmox_disable_nag_screen | bool
+
+- name: Configure storage content types (add snippets)
+  ansible.builtin.import_tasks: storage.yml
