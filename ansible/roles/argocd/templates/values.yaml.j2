@@ -18,3 +18,10 @@ redis-ha:
 
 redis:
   enabled: {{ argo.redis_enabled | bool | lower }}
+
+configs:
+  repositories:
+    homelab-gitops:
+      url: {{ argo.git_repository }}
+      type: git
+      name: homelab-gitops
