@@ -1,0 +1,26 @@
+---
+# Longhorn V1 Data Engine prerequisites
+longhorn_required_packages:
+  - bash
+  - curl
+  - util-linux
+  - grep
+  - mawk
+  - open-iscsi
+
+# Longhorn RWX volume support
+longhorn_enable_rwx: true
+
+# Optional encrypted Longhorn volumes
+longhorn_enable_encryption: true
+
+# Commands required by Longhorn
+longhorn_required_commands:
+  - bash
+  - curl
+  - findmnt
+  - grep
+  - awk
+  - blkid
+  - lsblk
+  - iscsiadm

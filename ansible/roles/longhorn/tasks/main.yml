@@ -1,0 +1,88 @@
+---
+- name: Verify Debian operating system
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['os_family'] == 'Debian'
+    fail_msg: "This role supports Debian-based systems only."
+
+- name: Install Longhorn V1 required packages
+  ansible.builtin.apt:
+    name: "{{ longhorn_required_packages }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Install NFS client for RWX volumes
+  ansible.builtin.apt:
+    name: nfs-common
+    state: present
+  when: longhorn_enable_rwx | bool
+
+- name: Install encryption prerequisites
+  ansible.builtin.apt:
+    name:
+      - cryptsetup
+      - dmsetup
+    state: present
+  when: longhorn_enable_encryption | bool
+
+- name: Persist iSCSI TCP kernel module
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/longhorn.conf
+    content: "iscsi_tcp\n"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Load iSCSI TCP kernel module
+  ansible.builtin.command:
+    cmd: modprobe iscsi_tcp
+  changed_when: false
+
+- name: Enable and start iSCSI service
+  ansible.builtin.systemd_service:
+    name: iscsid
+    enabled: true
+    state: started
+
+- name: Get installed open-iscsi version
+  ansible.builtin.command:
+    cmd: dpkg-query -W -f=${Version} open-iscsi
+  register: longhorn_iscsi_version
+  changed_when: false
+
+- name: Reject incompatible open-iscsi version
+  ansible.builtin.assert:
+    that:
+      - longhorn_iscsi_version.stdout is not
+        regex('^(?:[0-9]+:)?2\\.1\\.12(?:-|\\+|~|$)')
+    fail_msg: >-
+      open-iscsi 2.1.12 is incompatible with Longhorn.
+      Use version 2.1.11 or earlier, or 2.1.13 or later.
+
+- name: Verify Longhorn required commands
+  ansible.builtin.shell:
+    cmd: "command -v {{ item }}"
+  loop: "{{ longhorn_required_commands }}"
+  changed_when: false
+
+- name: Verify iSCSI TCP module is loaded
+  ansible.builtin.command:
+    cmd: lsmod
+  register: longhorn_lsmod
+  changed_when: false
+  failed_when: >-
+    'iscsi_tcp' not in longhorn_lsmod.stdout
+
+- name: Verify iSCSI service is active
+  ansible.builtin.command:
+    cmd: systemctl is-active iscsid
+  register: longhorn_iscsid_status
+  changed_when: false
+  failed_when: longhorn_iscsid_status.stdout != 'active'
+
+- name: Display Longhorn prerequisite status
+  ansible.builtin.debug:
+    msg: >-
+      Longhorn V1 prerequisites installed and verified
+      on {{ inventory_hostname }}.
