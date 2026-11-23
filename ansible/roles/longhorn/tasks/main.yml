@@ -86,3 +86,17 @@
     msg: >-
       Longhorn V1 prerequisites installed and verified
       on {{ inventory_hostname }}.
+
+- name: Label the worker nodes
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - "--kubeconfig={{ longhorn_kubeconfig_path }}"
+      - label
+      - node
+      - "{{ inventory_hostname }}"
+      - storage.longhorn.io/worker=true
+      - node.longhorn.io/create-default-disk=true
+      - --overwrite
+  delegate_to: "{{ groups['kubeadm_control_plane'][0] }}"
+  become: true

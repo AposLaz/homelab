@@ -1,4 +1,7 @@
 ---
+# Administrator kubeconfig on the control-plane node
+longhorn_kubeconfig_path: /etc/kubernetes/admin.conf
+
 # Longhorn V1 Data Engine prerequisites
 longhorn_required_packages:
   - bash
