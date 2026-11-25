@@ -1,4 +1,7 @@
 ---
+- name: Detect Prometheus Operator integration before rendering Hubble values
+  ansible.builtin.import_tasks: cilium-monitoring.yml
+
 - name: Render values with Hubble enabled
   ansible.builtin.set_fact:
     cilium_helm_values: "{{ lookup('ansible.builtin.template', 'values.yaml.j2') | from_yaml }}"

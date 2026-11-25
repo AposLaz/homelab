@@ -6,18 +6,67 @@ server:
   replicas: {{ argo.server_replicas | int }}
   ingress:
     enabled: {{ argo.ingress_enabled | bool | lower }}
+  metrics:
+    enabled: {{ argo_service_monitor_enabled | default(false) | bool | lower }}
+    serviceMonitor:
+      enabled: {{ argo_service_monitor_enabled | default(false) | bool | lower }}
+      interval: 30s
 
 repoServer:
   replicas: {{ argo.repo_server_replicas | int }}
+  metrics:
+    enabled: {{ argo_service_monitor_enabled | default(false) | bool | lower }}
+    serviceMonitor:
+      enabled: {{ argo_service_monitor_enabled | default(false) | bool | lower }}
+      interval: 30s
 
 controller:
   replicas: {{ argo.controller_replicas | int }}
+  metrics:
+    enabled: {{ argo_service_monitor_enabled | default(false) | bool | lower }}
+    serviceMonitor:
+      enabled: {{ argo_service_monitor_enabled | default(false) | bool | lower }}
+      interval: 30s
+
+applicationSet:
+  metrics:
+    enabled: {{ argo_service_monitor_enabled | default(false) | bool | lower }}
+    serviceMonitor:
+      enabled: {{ argo_service_monitor_enabled | default(false) | bool | lower }}
+      interval: 30s
 
 redis-ha:
   enabled: {{ argo.redis_ha_enabled | bool | lower }}
 
 redis:
   enabled: {{ argo.redis_enabled | bool | lower }}
+  exporter:
+    enabled: {{ argo_service_monitor_enabled | default(false) | bool | lower }}
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        memory: 64Mi
+  metrics:
+    enabled: {{ argo_service_monitor_enabled | default(false) | bool | lower }}
+    serviceMonitor:
+      enabled: {{ argo_service_monitor_enabled | default(false) | bool | lower }}
+      interval: 30s
+
+dex:
+  metrics:
+    enabled: {{ argo_service_monitor_enabled | default(false) | bool | lower }}
+    serviceMonitor:
+      enabled: {{ argo_service_monitor_enabled | default(false) | bool | lower }}
+      interval: 30s
+
+notifications:
+  metrics:
+    enabled: {{ argo_service_monitor_enabled | default(false) | bool | lower }}
+    serviceMonitor:
+      enabled: {{ argo_service_monitor_enabled | default(false) | bool | lower }}
+      interval: 30s
 
 configs:
   repositories:

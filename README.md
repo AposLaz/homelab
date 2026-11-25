@@ -187,6 +187,8 @@ The `cilium` tag renders relay/UI as disabled. Run `hubble` afterward to enable 
 
 Current values retain kube-proxy. MetalLB, Cilium L2/BGP advertisement, Ingress/Gateway, persistent storage, and application backups are not installed by this workflow.
 
+Cilium/Hubble and Argo CD expose metrics, but create ServiceMonitors only when the Prometheus Operator ServiceMonitor CRD exists. Install the CRDs through your monitoring stack (for example, `kube-prometheus-stack`). After installing it, rerun `ansible-playbook playbooks/kubeadm.yml --tags hubble` and `ansible-playbook playbooks/argocd.yml` to enable the monitors. Configure Prometheus to select their labels and namespaces (`kube-system` and `argocd`).
+
 ## 6. Bootstrap Argo CD
 
 Once all nodes are Ready, run from `ansible/`:

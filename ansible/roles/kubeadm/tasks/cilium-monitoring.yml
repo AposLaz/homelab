@@ -1,0 +1,21 @@
+---
+- name: Check whether Argo CD has established the ServiceMonitor CRD
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - "--kubeconfig={{ cilium.kubeconfig }}"
+      - --request-timeout=10s
+      - get
+      - crd
+      - servicemonitors.monitoring.coreos.com
+      - --ignore-not-found
+      - '--output=jsonpath={.status.conditions[?(@.type=="Established")].status}'
+  delegate_to: localhost
+  become: false
+  register: cilium_servicemonitor_crd
+  changed_when: false
+  check_mode: false
+
+- name: Enable Cilium monitoring only when the ServiceMonitor API is ready
+  ansible.builtin.set_fact:
+    cilium_service_monitor_enabled: "{{ cilium_servicemonitor_crd.stdout | trim == 'True' }}"

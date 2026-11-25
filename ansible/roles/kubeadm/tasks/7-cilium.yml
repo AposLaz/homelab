@@ -49,6 +49,9 @@
       - cilium_local_kubeconfig.stat.isreg | default(false)
     fail_msg: "Create the laptop kubeconfig at {{ cilium.kubeconfig }} before running Cilium tasks."
 
+- name: Detect Prometheus Operator integration before rendering Cilium values
+  ansible.builtin.import_tasks: cilium-monitoring.yml
+
 # Render before delegation to preserve the control-plane API address.
 - name: Render Cilium Helm values
   ansible.builtin.set_fact:

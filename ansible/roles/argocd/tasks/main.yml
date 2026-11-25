@@ -21,6 +21,25 @@
           - argo_kubeconfig.stat.isreg | default(false)
         fail_msg: "Kubeconfig is missing at {{ argo.kubeconfig }} on the laptop."
 
+    - name: Check whether Argo CD has established the ServiceMonitor CRD
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - "--kubeconfig={{ argo.kubeconfig }}"
+          - --request-timeout=10s
+          - get
+          - crd
+          - servicemonitors.monitoring.coreos.com
+          - --ignore-not-found
+          - '--output=jsonpath={.status.conditions[?(@.type=="Established")].status}'
+      register: argo_servicemonitor_crd
+      changed_when: false
+      check_mode: false
+
+    - name: Enable Argo CD monitoring only when the ServiceMonitor API is ready
+      ansible.builtin.set_fact:
+        argo_service_monitor_enabled: "{{ argo_servicemonitor_crd.stdout | trim == 'True' }}"
+
     - name: Add Argo Helm repository
       kubernetes.core.helm_repository:
         name: argo

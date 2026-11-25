@@ -1,2 +1,9 @@
 ---
 kubeconfig_path: /etc/kubernetes/admin.conf
+
+# Hubble configuration
+hubble_relay_enabled: true
+hubble_ui_enabled: true
+
+# Prometheus Operator integration
+cilium_service_monitor_enabled: false
