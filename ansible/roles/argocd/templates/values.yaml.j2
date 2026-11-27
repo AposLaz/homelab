@@ -55,11 +55,7 @@ redis:
       interval: 30s
 
 dex:
-  metrics:
-    enabled: {{ argo_service_monitor_enabled | default(false) | bool | lower }}
-    serviceMonitor:
-      enabled: {{ argo_service_monitor_enabled | default(false) | bool | lower }}
-      interval: 30s
+  enabled: false
 
 notifications:
   metrics:
